@@ -59,18 +59,25 @@ int MidiParser::parse(midi_byte_t* input, unsigned int length){
 				//sysex!!!
 				waitingForStatus = false;
 				receivingSysex = true;
-				rt_printf("Receiving sysex\n");
+				elapsedSysexBytes = 0; 
+				// rt_printf("Receiving sysex\n");
 				continue;
 			} else { // other system common
 				continue;
 			}
 		} else if (receivingSysex){
 			// Just wait for the message to end
-			rt_printf("%c", input[n]);
+			// rt_printf("%c", input[n]);
+			sysexBuffer[elapsedSysexBytes] = input[n];
+			elapsedSysexBytes++;
+			
 			if(input[n] == 0xF7){
 				receivingSysex = false;
 				waitingForStatus = true;
-				rt_printf("\nCompleted receiving sysex\n");
+				if(isSysexCallbackEnabled() == true){
+					sysexCallback(sysexBuffer, elapsedSysexBytes, sysexCallbackArg);
+				}
+				// rt_printf("\nCompleted receiving sysex\n");
 			}
 			continue;
 		} else {
@@ -153,6 +160,7 @@ void Midi::readInputLoop(void* obj){
 	snd_rawmidi_poll_descriptors(that->alsaIn, pfds, npfds);
 
 	while(!gShouldStop){ 
+		usleep(1000);
 		int maxBytesToRead = that->inputBytes.size() - that->inputBytesWritePointer;
 		int timeout = 50; // ms
 		int err = poll(pfds, npfds, timeout);
@@ -174,6 +182,7 @@ void Midi::readInputLoop(void* obj){
 			&that->inputBytes[that->inputBytesWritePointer],
 			sizeof(midi_byte_t)*maxBytesToRead
 		);
+		//printf("ret: %d(out of %d), in buf: %d\n", ret, maxBytesToRead, that->inputBytesWritePointer - that->inputBytesReadPointer + that->inputBytes.size() % that->inputBytes.size());
 		if(ret < 0){
 			// read() would return EAGAIN when no data are available to read just now
 			if(-ret != EAGAIN){ 
@@ -790,5 +799,6 @@ static void error(const char *format, ...) {
    va_end(ap);
    putc('\n', stderr);
 }
+
 
 

@@ -103,7 +103,14 @@ class OSCSender{
 		 *
 		 */
 		void send();
-
+		/**
+		 * \brief Sends the already prepared message
+		 *
+		 * After creating a message manually, the message is sent with this function. It is safe to call
+		 * from the audio thread.
+		 *
+		 */
+		void send(oscpkt::Message preparedMsg);
 	private:
         	std::unique_ptr<UdpClient> socket;
         

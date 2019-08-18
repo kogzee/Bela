@@ -83,7 +83,8 @@ void WSServer::addAddress(std::string _address, std::function<void(std::string, 
 	handler->on_connect = on_connect;
 	handler->on_disconnect = on_disconnect;
 	handler->binary = binary;
-	server->addWebSocketHandler((std::string("/")+_address).c_str(), handler);
+	printf("WSServer: addWebSocketHandler\n");
+	server->addWebSocketHandler((std::string("/")+_address).c_str(), handler, true);
 	
 	address_book[_address] = std::unique_ptr<AuxTaskNonRT>(new AuxTaskNonRT());
 	address_book[_address]->create(std::string("WSClient_")+_address, [this, handler](void* buf, int size){ client_task_func(handler, buf, size); });

@@ -149,22 +149,32 @@ private:
 	unsigned int writePointer;
 	unsigned int readPointer;
 	unsigned int elapsedDataBytes;
+	unsigned int elapsedSysexBytes;
 	bool waitingForStatus;
 	bool receivingSysex;
 	void (*messageReadyCallback)(MidiChannelMessage,void*);
+	void (*sysexCallback)(midi_byte_t*,unsigned int,void*);
 	bool callbackEnabled;
+	bool sysexCallbackEnabled;
 	void* callbackArg;
+	void* sysexCallbackArg;
+	const static int maxSysexBytes = 512;
+	midi_byte_t sysexBuffer[maxSysexBytes]; 
 public:
 	MidiParser(){
 		waitingForStatus = true;
 		receivingSysex = false;
 		elapsedDataBytes= 0;
+		elapsedSysexBytes = 0;
 		messages.resize(100); // 100 is the number of messages that can be buffered
 		writePointer = 0;
 		readPointer = 0;
 		callbackEnabled = false;
 		messageReadyCallback = NULL;
 		callbackArg = NULL;
+		sysexCallbackEnabled = false;
+		sysexCallback = NULL;
+		sysexCallbackArg = NULL;
 	}
 
 	/**
@@ -211,6 +221,39 @@ public:
 	 */
 	bool isCallbackEnabled(){
 		return callbackEnabled;
+	};
+
+	/**
+	 * Sets the sysex callback to call when sysex data is available
+	 * from the input port.
+	 *
+	 * The callback will be called with two arguments:
+	 *   callback(midi_byte_t sysexChar, void* arg)
+	 *
+	 * In order to deactivate the callback, call this method with NULL as the
+	 * first argument.
+	 *
+	 * @param newCallback the callback function.
+	 * @param arg the second argument to be passed to the callback function.
+	 *
+	 */
+	void setSysexCallback(void (*newCallback)(midi_byte_t*, unsigned int numbytes, void*), void* arg=NULL){
+		sysexCallbackArg = arg;
+		sysexCallback = newCallback;
+		if(newCallback != NULL){
+			sysexCallbackEnabled = true;
+		} else {
+			sysexCallbackEnabled = false;
+		}
+	};
+
+	/**
+	 * Checks whether there is a callback currently set to be called
+	 * every time new input sysex data is available from the
+	 * input port.
+	 */
+	bool isSysexCallbackEnabled(){
+		return sysexCallbackEnabled;
 	};
 
 	/**
@@ -295,6 +338,22 @@ public:
 		// if callback is not NULL, also enable the parser
 		enableParser(callback != NULL); //this needs to be first, as it deletes the parser(if exists)
 		getParser()->setCallback(callback, arg);
+	}
+
+	/**
+	 * Sets the callback to call when sysex data is available
+	 * from the input port.
+	 *
+	 * Must have already the parser enabled
+	 * internally calls MidiParser::setSysexCallback();
+	 *
+	 * @param callback the callback function.
+	 * @param arg the second argument to be passed to the callback function.
+	 */
+	void setSysexCallback(void (*callback)(midi_byte_t*, unsigned int numbytes, void*), void* arg=NULL){
+		// if callback is not NULL, also enable the parser
+		if (this->parserEnabled == true)
+			getParser()->setSysexCallback(callback, arg);
 	}
 
 	/**
@@ -396,3 +455,4 @@ private:
 
 
 #endif /* MIDI_H_ */
+
